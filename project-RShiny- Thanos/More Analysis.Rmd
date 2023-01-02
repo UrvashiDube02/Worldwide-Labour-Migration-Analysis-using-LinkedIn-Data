@@ -1,0 +1,111 @@
+---
+title: "More Analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+
+library(tidyverse)
+library(dplyr)
+
+```
+
+
+```{r}
+df <- read_csv("country_migration_public.csv", show_col_types = FALSE)
+
+Income_wise <- data.frame(base_country_name = df$base_country_name, base_country_wb_income = df$base_country_wb_income)
+
+Income_wise$base_country_wb_income[Income_wise$base_country_wb_income == 'High Income'] <- 4
+Income_wise$base_country_wb_income[Income_wise$base_country_wb_income == 'Upper Middle Income'] <- 3
+Income_wise$base_country_wb_income[Income_wise$base_country_wb_income == 'Lower Middle Income'] <- 2
+Income_wise$base_country_wb_income[Income_wise$base_country_wb_income == 'Low Income'] <- 1
+
+Income_wise <- Income_wise %>% distinct()
+Income_wise
+
+```
+
+```{r}
+
+world_coordinates <- map_data("world")
+
+world_coordinates_1 <- world_coordinates %>% filter(region %in% Income_wise$base_country_name)
+world_coordinates_1
+
+Income_wise
+
+world_coordinates_1
+
+
+
+
+
+
+
+
+
+```
+
+```{r}
+
+ggplot() +
+  geom_map(
+    data = world_coordinates, map = world_coordinates,
+    aes(long, lat, map_id = region),
+    color = "lightgray", fill = "white", size = 0.2) +
+  
+  geom_map(
+    data = world_coordinates_1 %>% filter() , map = world_coordinates_1,
+    aes(long, lat, map_id = region),
+    color = "black", size = 0.2) +
+  
+  geom_map(
+    data = world_coordinates_1, map = world_coordinates_1,
+    aes(long, lat, map_id = region),
+    color = "black", size = 0.2) +
+  
+  geom_map(
+    data = world_coordinates_1, map = world_coordinates_1,
+    aes(long, lat, map_id = region),
+    color = "black", size = 0.2)
+
+```
+
+
+```{r}
+
+
+WorldData <- map_data('world') %>% filter(region != "Antarctica") %>% fortify
+
+df <- data.frame(region=c('Hungary','Lithuania','Argentina'), 
+                 value=c(4,10,11), 
+                 stringsAsFactors=FALSE)
+
+p <- ggplot() +
+    geom_map(data = WorldData, map = WorldData,
+                  aes(x = long, y = lat, group = group, map_id=region),
+                  fill = "white", colour = "#7f7f7f", size=0.5) + 
+  
+    geom_map(data = df, map=WorldData,
+                  aes(fill=value, map_id=region),
+                  colour="#7f7f7f", size=0.5) +
+  
+    coord_map("rectangular", lat0=0, xlim=c(-180,180), ylim=c(-60, 90)) +
+    scale_fill_continuous(low="thistle2", high="darkred", guide="colorbar") +
+    scale_y_continuous(breaks=c()) +
+    scale_x_continuous(breaks=c()) +
+    labs(fill="legend", title="Title", x="", y="") +
+    theme_bw()
+p 
+
+```
+
+
+
+

@@ -1,0 +1,188 @@
+---
+title: "Further Analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+library(tidyverse)
+library(randomForest)
+
+```
+
+
+# For Country Migration
+
+Graph for year 2019
+
+```{r}
+
+df <- read_csv("country_migration_public.csv", show_col_types = FALSE)
+df <- aggregate(df$net_per_10K_2019, by=list(base_country_wb_region = df$base_country_wb_region), FUN=mean)
+df <- df %>%  rename("net_per_10K_2019" = "x")
+df$Group<-ifelse(df$net_per_10K_2019>0,"A","B")
+ggplot(df,aes(x=base_country_wb_region,y=net_per_10K_2019,fill=Group))+geom_bar(stat="identity") + coord_flip() + theme_bw()
+
+
+```
+
+Graph for year 2023
+
+```{r}
+
+df = read_csv("country_migration_public.csv")
+df
+# head(df)
+
+#Summing up the net per 10k for each country
+country_wise_net_per_year_lr <- df %>% group_by(base_country_name, base_lat, base_long, base_country_wb_region) %>% summarise(net_per_10K_2015 = sum(net_per_10K_2015), net_per_10K_2016 = sum(net_per_10K_2016), net_per_10K_2017 = sum(net_per_10K_2017), net_per_10K_2018 = sum(net_per_10K_2018), net_per_10K_2019 = sum(net_per_10K_2019))
+# head(country_wise_net_per_year_lr)
+
+country_wise_net_per_year_rf <- country_wise_net_per_year_lr
+rf <- randomForest(net_per_10K_2019 ~ net_per_10K_2015 + net_per_10K_2016 + net_per_10K_2017 + net_per_10K_2018, data =  country_wise_net_per_year_rf, proximity = TRUE)
+
+#head(country_wise_net_per_year_rf)
+
+colnames(country_wise_net_per_year_rf)[6] = "net_per_10K_2015"
+colnames(country_wise_net_per_year_rf)[7] = "net_per_10K_2016"
+colnames(country_wise_net_per_year_rf)[8] = "net_per_10K_2017"
+colnames(country_wise_net_per_year_rf)[9] = "net_per_10K_2018"
+
+# head(country_wise_net_per_year_rf)
+
+country_wise_net_per_year_rf$net_per_10K_2023 = predict(rf, newdata = country_wise_net_per_year_rf %>% select(6, 7, 8, 9))
+
+# head(country_wise_net_per_year_rf)
+
+colnames(country_wise_net_per_year_rf)[6] = "net_per_10K_2016"
+colnames(country_wise_net_per_year_rf)[7] = "net_per_10K_2017"
+colnames(country_wise_net_per_year_rf)[8] = "net_per_10K_2018"
+colnames(country_wise_net_per_year_rf)[9] = "net_per_10K_2019"
+
+#head(country_wise_net_per_year_rf)
+
+country_wise_net_per_year_rf <- aggregate(country_wise_net_per_year_rf$net_per_10K_2023, by=list(base_country_wb_region = country_wise_net_per_year_rf$base_country_wb_region), FUN=mean)
+country_wise_net_per_year_rf <- country_wise_net_per_year_rf %>%  rename("net_per_10K_2023" = "x")
+
+country_wise_net_per_year_rf$Group<-ifelse(country_wise_net_per_year_rf$net_per_10K_2023>0,"A","B")
+
+ggplot(country_wise_net_per_year_rf,aes(x=base_country_wb_region,y=net_per_10K_2023,fill=Group))+geom_bar(stat="identity") + coord_flip() + theme_bw()
+
+
+```
+
+
+# For Industry Migration
+
+Graph for year 2019
+
+```{r}
+
+df2 <- read_csv("industry_migration_public.csv", show_col_types = FALSE)
+df2 <- aggregate(df2$net_per_10K_2019, by=list(Region = df2$wb_region), FUN=mean)
+df2 <- df2 %>%  rename("net_per_10K_2019" = "x")
+df2$Group<-ifelse(df2$net_per_10K_2019>0,"A","B")
+ggplot(df2,aes(x=Region,y=net_per_10K_2019,fill=Group))+geom_bar(stat="identity") + coord_flip() + theme_bw()
+
+```
+
+
+Graph for year 2023
+
+```{r}
+
+country_wise_net_per_year_rf_industry = read_csv("industry_migration_public.csv")
+
+country_wise_net_per_year_rf_industry <- country_wise_net_per_year_rf_industry %>% group_by(country_name,wb_region) %>% summarise(net_per_10K_2015 = sum(net_per_10K_2015), net_per_10K_2016 = sum(net_per_10K_2016), net_per_10K_2017 = sum(net_per_10K_2017), net_per_10K_2018 = sum(net_per_10K_2018), net_per_10K_2019 = sum(net_per_10K_2019))
+head(country_wise_net_per_year_rf_industry)
+
+#head(country_wise_net_per_year_rf_industry)
+
+rf <- randomForest(net_per_10K_2019 ~ net_per_10K_2015 + net_per_10K_2016 + net_per_10K_2017 + net_per_10K_2018, data =  country_wise_net_per_year_rf_industry, proximity = TRUE)
+
+colnames(country_wise_net_per_year_rf_industry)[4] = "net_per_10K_2015"
+colnames(country_wise_net_per_year_rf_industry)[5] = "net_per_10K_2016"
+colnames(country_wise_net_per_year_rf_industry)[6] = "net_per_10K_2017"
+colnames(country_wise_net_per_year_rf_industry)[7] = "net_per_10K_2018"
+
+#head(country_wise_net_per_year_rf_industry)
+
+country_wise_net_per_year_rf_industry$net_per_10K_2023 = predict(rf, newdata = country_wise_net_per_year_rf_industry %>% select(4, 5, 6, 7))
+
+#head(country_wise_net_per_year_rf_industry)
+
+colnames(country_wise_net_per_year_rf_industry)[4] = "net_per_10K_2016"
+colnames(country_wise_net_per_year_rf_industry)[5] = "net_per_10K_2017"
+colnames(country_wise_net_per_year_rf_industry)[6] = "net_per_10K_2018"
+colnames(country_wise_net_per_year_rf_industry)[7] = "net_per_10K_2019"
+
+#head(country_wise_net_per_year_rf_industry)
+
+df2 <- country_wise_net_per_year_rf_industry
+df2 <- aggregate(df2$net_per_10K_2023, by=list(Region = df2$wb_region), FUN=mean)
+df2 <- df2 %>%  rename("net_per_10K_2023" = "x")
+df2$Group<-ifelse(df2$net_per_10K_2023>0,"A","B")
+ggplot(df2,aes(x=Region,y=net_per_10K_2023,fill=Group))+geom_bar(stat="identity") + coord_flip() + theme_bw()
+
+
+
+```
+
+
+
+# For Skill Migration
+
+Graph for year 2019
+
+```{r}
+
+df3 <- read_csv("app/www/data/skill_migration.csv", show_col_types = FALSE)
+df3 <- aggregate(df3$net_per_10K_2019, by=list(Region = df3$wb_region), FUN=mean)
+df3 <- df3 %>%  rename("net_per_10K_2019" = "x")
+df3$Group<-ifelse(df3$net_per_10K_2019>0,"A","B")
+ggplot(df3,aes(x=Region,y=net_per_10K_2019,fill=Group))+geom_bar(stat="identity") + coord_flip() + theme_bw()
+
+```
+
+Graph for year 2023
+
+```{r}
+
+country_wise_net_per_year_rf_skill = read_csv("skill_migration_public.csv")
+
+country_wise_net_per_year_rf_skill <- country_wise_net_per_year_rf_skill %>% group_by(country_name, wb_region) %>% summarise(net_per_10K_2015 = sum(net_per_10K_2015), net_per_10K_2016 = sum(net_per_10K_2016), net_per_10K_2017 = sum(net_per_10K_2017), net_per_10K_2018 = sum(net_per_10K_2018), net_per_10K_2019 = sum(net_per_10K_2019))
+
+#head(country_wise_net_per_year_rf_skill)
+
+rf <- randomForest(net_per_10K_2019 ~ net_per_10K_2015 + net_per_10K_2016 + net_per_10K_2017 + net_per_10K_2018, data =  country_wise_net_per_year_rf_skill, proximity = TRUE)
+
+colnames(country_wise_net_per_year_rf_skill)[4] = "net_per_10K_2015"
+colnames(country_wise_net_per_year_rf_skill)[5] = "net_per_10K_2016"
+colnames(country_wise_net_per_year_rf_skill)[6] = "net_per_10K_2017"
+colnames(country_wise_net_per_year_rf_skill)[7] = "net_per_10K_2018"
+
+#head(country_wise_net_per_year_rf_skill)
+
+country_wise_net_per_year_rf_skill$net_per_10K_2023 = predict(rf, newdata = country_wise_net_per_year_rf_skill %>% select(4, 5, 6, 7))
+
+#head(country_wise_net_per_year_rf_skill)
+
+colnames(country_wise_net_per_year_rf_skill)[4] = "net_per_10K_2016"
+colnames(country_wise_net_per_year_rf_skill)[5] = "net_per_10K_2017"
+colnames(country_wise_net_per_year_rf_skill)[6] = "net_per_10K_2018"
+colnames(country_wise_net_per_year_rf_skill)[7] = "net_per_10K_2019"
+
+#head(country_wise_net_per_year_rf_skill)
+
+df3 <- country_wise_net_per_year_rf_skill
+df3 <- aggregate(df3$net_per_10K_2023, by=list(Region = df3$wb_region), FUN=mean)
+df3 <- df3 %>%  rename("net_per_10K_2023" = "x")
+df3$Group<-ifelse(df3$net_per_10K_2023>0,"A","B")
+ggplot(df3,aes(x=Region,y=net_per_10K_2023,fill=Group))+geom_bar(stat="identity") + coord_flip() + theme_bw()
+
+```
+

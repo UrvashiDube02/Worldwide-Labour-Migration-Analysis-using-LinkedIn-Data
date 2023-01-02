@@ -1,0 +1,13 @@
+name: project1
+title: project1
+username:
+account: dhvl15
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 7872035
+bundleId: 6626060
+url: https://dhvl15.shinyapps.io/project1/
+when: 1670830699.95617
+lastSyncTime: 1670830699.95621
+asMultiple: FALSE
+asStatic: FALSE
