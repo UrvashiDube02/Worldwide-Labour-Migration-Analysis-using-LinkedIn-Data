@@ -1,0 +1,195 @@
+---
+title: "Data Cleaning"
+author: "Dhaval Jariwala"
+date: "2022-12-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(stringr)
+library(dplyr)
+library(tidyverse)
+library(leaflet)
+library(maps)
+
+skillMigration = read.csv("app/www/data/skill_migration.csv")
+industryMigration = read.csv("app/www/data/industry_migration.csv")
+countryMigration = read_csv("app/www/data/country_migration.csv")
+head(skillMigration)
+```
+
+```{r}
+
+# skill migration
+skillMigrationClean <- skillMigration[1:12] %>% gather(year, value, net_per_10K_2015:net_per_10K_2019)
+head(skillMigrationClean)
+
+skillMigrationClean$year <- str_sub(skillMigrationClean$year,-4,-1)
+head(skillMigrationClean)
+
+write.csv(skillMigrationClean, "app/www/data/skillclean.csv", row.names=FALSE)
+
+# country migration
+countryMigrationClean <- countryMigration[1:17] %>% gather(year, value, net_per_10K_2015:net_per_10K_2019)
+head(countryMigrationClean)
+
+countryMigrationClean$year <- str_sub(countryMigrationClean$year,-4,-1)
+head(countryMigrationClean)
+
+write.csv(countryMigrationClean, "app/www/data/countryclean.csv", row.names=FALSE)
+
+# industry migration
+industryMigrationClean <- industryMigration[1:13] %>% gather(year, value, net_per_10K_2015:net_per_10K_2019)
+head(countryMigrationClean)
+
+industryMigrationClean$year <- str_sub(industryMigrationClean$year,-4,-1)
+head(industryMigrationClean)
+
+write.csv(countryMigrationClean, "app/www/data/industryclean.csv", row.names=FALSE)
+```
+
+
+```{r}
+x = skillMigrationClean %>%  filter(skillMigration$skill_group_category == "Tech Skills")
+skillMigrationClean
+
+skillMigrationClean %>% group_by(skill_group_name) %>% tally()
+skillMigrationClean
+
+unique(x$skill_group_name)
+
+y = industryMigrationClean
+y
+
+```
+
+
+##########################################################
+
+For the TALENT MIGRATION TAB
+
+##########################################################
+World Graph 
+
+```{r}
+
+base_country = "India"
+
+base_country_lat <- countryMigrationClean %>%  filter(base_country_name %in% base_country) 
+base_country_lat <- base_country_lat$base_lat[1]
+
+base_country_lon <- countryMigrationClean %>%  filter(base_country_name %in% base_country) 
+base_country_lon <- base_country_lon$base_long[1]
+
+
+talent_graph <- subset(countryMigrationClean, select = c(base_country_name, target_country_name, target_lat, target_long, year, value))
+
+
+positive <- talent_graph %>% filter(base_country_name %in% base_country) %>% filter(value > 0)
+names1 <- summarise_at(group_by(positive,target_country_name), vars(value), funs(mean(.,na.rm=TRUE))) %>% arrange(desc(value))
+names1<-arrange(names1,desc(value))[1:5,] %>% subset(select = target_country_name)
+positive <- positive %>% filter(positive$target_country_name %in% names1$target_country_name)
+
+positive
+
+negative <- talent_graph %>% filter(base_country_name %in% base_country) %>% filter(value < 0)
+negative
+names2 <- summarise_at(group_by(negative,target_country_name), vars(value), funs(mean(.,na.rm=TRUE))) %>% arrange(desc(value))
+names2
+names2<-arrange(names2,value)[1:5,] %>% subset(select = target_country_name)
+negative <- negative %>% filter(negative$target_country_name %in% names2$target_country_name)
+negative
+
+mapStates = map('world',col="#f2f2f2", fill=TRUE, bg="lightblue", lwd=0.05, mar=rep(0,4),border=0,)
+
+leaflet(data = mapStates) %>% addTiles() %>%
+  addPolygons(fillColor = topo.colors(10, alpha = NULL), stroke = FALSE) %>% 
+  fitBounds(~-100,-60,~60,70) %>%
+  addLayersControl(
+    position = "bottomright",
+    overlayGroups = c("Positive", "Negative"),
+    options = layersControlOptions(collapsed = FALSE)) %>% 
+  addCircleMarkers(data = positive, lat = ~ target_lat, lng = ~ target_long, weight = 1, radius = 7, 
+                   fillOpacity = 0.2, color = "green", group = "Positive",
+                   label = sprintf("<strong>%s</strong><br/>Talent Migration Rate: <br/>%g", positive$target_country_name, positive$value) %>% lapply(htmltools::HTML),
+                   labelOptions = labelOptions(
+                     style = list("font-weight" = "normal", padding = "3px 8px"),
+                     textsize = "15px", direction = "auto")) %>% 
+  addCircleMarkers(data = negative, lat = ~ target_lat, lng = ~ target_long, weight = 1, radius = 7, 
+                   fillOpacity = 0.2, color = "red", group = "Negative",
+                   label = sprintf("<strong>%s</strong><br/>Talent Migration Rate: <br/>%g", negative$target_country_name, negative$value) %>% lapply(htmltools::HTML),
+                   labelOptions = labelOptions(
+                     style = list("font-weight" = "normal", padding = "3px 8px"),
+                     textsize = "15px", direction = "auto"))
+
+```
+
+Industry Migration
+
+```{r}
+
+industry_table <- subset(industryMigration, select = c(industry_name, net_per_10K_2017, net_per_10K_2018, net_per_10K_2019))
+
+industry_table$industry_Value <- round((industry_table$net_per_10K_2017 + industry_table$net_per_10K_2018 + industry_table$net_per_10K_2019)/3, digits = 2)
+
+industry_table <- subset(industry_table, select = c(industry_name, industry_Value))
+
+industry_table <- aggregate(industry_table$industry_Value, by=list(industry_name=industry_table$industry_name), FUN=min)
+industry_table <- industry_table %>%  rename("industry_Value" = "x")
+
+industry_table <- filter(industry_table, industry_Value > -440)
+positive_industry <- industry_table %>% filter(industry_Value > 40)
+
+positive_industry <- positive_industry[order(positive_industry$industry_Value),][1:5,]
+positive_industry <- na.omit(positive_industry)
+
+negative_industry <- industry_table %>% filter(industry_Value < 0) 
+negative_industry <- negative_industry[order(negative_industry$industry_Value),][1:5,]
+negative_industry <- na.omit(negative_industry)
+
+```
+
+
+Skill Migration
+
+```{r}
+
+skill_table <- subset(skillMigration, select = c(skill_group_name, net_per_10K_2017, net_per_10K_2018, net_per_10K_2019))
+skill_table$skill_Value <- round((skill_table$net_per_10K_2017 + skill_table$net_per_10K_2018 + skill_table$net_per_10K_2019)/3, digits = 2)
+skill_table <- subset(skill_table, select = c(skill_group_name, skill_Value))
+skill_table <- skill_table %>%  filter(skill_Value > -400)
+skill_table <- aggregate(skill_table$skill_Value, by=list(skill_name=skill_table$skill_group_name), FUN=min)
+skill_table <- skill_table %>%  rename("skill_Value" = "x")
+
+positive_skill <- skill_table %>% filter(skill_Value > 20) 
+positive_skill <- positive_skill[order(positive_skill$skill_Value),][1:5,]
+positive_skill <- na.omit(positive_skill)
+
+negative_skill <- skill_table %>% filter(skill_Value < 0) 
+negative_skill <- negative_skill[order(negative_skill$skill_Value),][1:5,]
+negative_skill <- na.omit(negative_skill)
+
+```
+
+
+```{r}
+
+# Countries Gaining From
+Country_positive
+
+# Countries Losing To
+Country_negative
+
+# Industries Gaining 
+positive_industry
+
+# Industries Losing
+negative_industry
+
+# Skills being gained
+positive_skill
+
+# Skills being lost
+negative_skill
+```
